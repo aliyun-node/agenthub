@@ -1,5 +1,5 @@
 {
-  "name": "agenthub",
+  "name": "@aliyun/agenthub",
   "version": "1.0.0",
   "description": "整合 agentx 和 commandx 便利工具",
   "main": "agenthub.js",
