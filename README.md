@@ -3,15 +3,15 @@ agenthub
 
 agenthub 是由 Node.js 性能平台提供的 agent 命令程序，用于协助您的 Node 应用性能数据上报和问题诊断。
 
-- [![Dependencies Status](https://david-dm.org/aliyun-node/agenthub.png)](https://david-dm.org/aliyun-node/agenthub)
+- [![Dependencies Status](https://david-dm.org/aliyun-node/@alicloud/agenthub.png)](https://david-dm.org/aliyun-node/@alicloud/agenthub)
 
 ## 安装
 
 ```sh
-$ npm install agenthub -g
+$ npm install @alicloud/agenthub -g
 ```
 
-以上命令会将agenthub安装为一个全局的命令行工具。
+以上命令会将 agenthub 安装为一个全局的命令行工具。
 
 ## 使用
 agenthub 需要一个配置文件来进行使用，agenthub 仅会在配置指定下的目录执行命令或读取日志。
