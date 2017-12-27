@@ -4,28 +4,14 @@
 var path = require('path');
 var nounou = require('nounou');
 var util = require('util');
+var argvHandler = require('../utils').argvHandler;
 var clientPath = path.join(__dirname, '../client.js');
 
-var argv = process.argv.slice(2);
 
-var printUsage = function () {
-  console.log('参数错误。用法示例:');
-  console.log('  agenthub <config.json>');
-  console.log('  agenthub -v');
-};
-
-if (argv.length < 1) {
-  printUsage();
-  process.exit(1);
-}
-
-if (argv[0] === '-v') {
-  console.log(require('../package.json').version);
-  process.exit(0);
-}
+var cfgPath = argvHandler(process.argv.slice(2));
 
 nounou(clientPath, {
-  args: [argv[0]],
+  args: [cfgPath],
   count: 1
 })
   .on('fork', function (client) {
