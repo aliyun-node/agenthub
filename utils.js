@@ -4,7 +4,9 @@
 var os = require('os');
 var fs = require('fs');
 var path = require('path');
-var spawn = require('child_process').spawn;
+var child_process = require('child_process');
+var spawn = child_process.spawn;
+var execSync = child_process.execSync;
 var agenthubBin = process.argv[1];
 var agenthubStatusPath = path.join(os.homedir(), '.agenthub.pid');
 
@@ -193,6 +195,88 @@ var updateAgentStatus = function () {
   }
 }
 
+
+var getProcessEnv = function(pid) {
+  var environ = execSync('cat /proc/' + pid + '/environ').toString().trim().split('\u0000');
+  var env = {ENABLE_NODE_LOG: false, NODE_LOG_DIR: '/tmp'}
+
+  for (let i in environ) {
+    if (environ[i].startsWith('ENABLE_NODE_LOG')) {
+      env.ENABLE_NODE_LOG = environ[i].split('=')[1];
+    }
+    if (environ[i].startsWith('NODE_LOG_DIR')) {
+      env.NODE_LOG_DIR = environ[i].split('=')[1];
+    }
+  }
+  if (!env.NODE_LOG_DIR.endsWith('/')) {
+    env.NODE_LOG_DIR += '/';
+  }
+  return env;
+};
+
+var isAlinode = function (txt) {
+  var alinode = execSync(txt + ' -p "process.alinode"').toString().trim();
+  if (alinode.startsWith('v')) {
+    return true;
+  } else {
+    return false;
+  }
+};
+
+
+var checkRuningStatus = function () {
+  var getNodeProcesses = 'ps -e -o pid,args | grep "node " | grep -v grep |grep -v check';
+  var nodeProcesses = execSync(getNodeProcesses).toString().trim().split('\n');
+  var configPath = '';
+
+  var formatedProcesses = [];
+  for (var i in nodeProcesses) {
+    let p = nodeProcesses[i].split(' ');
+    let proc = {
+      pid: p[0],
+      txt: p[1],
+      script: p[2],
+      args: p.slice(3)
+    }
+    if (proc.script.endsWith('agenthub/client.js')) {
+      configPath = p[3];
+    }
+    formatedProcesses.push(proc);
+  }
+
+  var config = require(configPath);
+  if (!config.logdir.endsWith('/')) {
+    config.logdir += '/';
+  }
+
+  for (i in formatedProcesses) {
+    let proc = formatedProcesses[i];
+
+    if (!(proc.script.endsWith('bin/agenthub') ||
+      proc.script.endsWith('agenthub/client.js'))) {
+
+      let is_alinode = isAlinode(proc.txt);
+      let env = getProcessEnv(proc.pid);
+      if (env.ENABLE_NODE_LOG !== 'YES') {
+        console.log('   ', proc.pid, 'is not start by alinode!!!');
+        continue;
+      }
+      if (config.logdir !== env.NODE_LOG_DIR) {
+        console.log('   ', proc.pid, 'logdir of', configPath,
+          config.logdir, '!== NODE_LOG_DIR:', env.NODE_LOG_DIR);
+      }
+
+      // console.log(proc.pid, proc.txt, proc.script, proc.args.join(' '));
+      // console.log('   ', is_alinode ? 'alinode' : 'not alinode');
+      // console.log('   ', config.logdir, env.NODE_LOG_DIR);
+      // console.log('   ', env.ENABLE_NODE_LOG);
+
+    }
+
+  }
+
+};
+
 var printUsage = function () {
   var help = [
   '',
@@ -232,6 +316,10 @@ exports.argvHandler = function(argv) {
     case '-h':
     case '--help':
       printUsage();
+      process.exit(0);
+      break;
+    case '--check':
+      checkRuningStatus();
       process.exit(0);
       break;
     case '-l':
