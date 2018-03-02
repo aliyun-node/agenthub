@@ -195,6 +195,36 @@ var updateAgentStatus = function () {
   }
 }
 
+var listLogDir = function() {
+  var getNodeProcesses = 'ps -e -o pid,args | grep "node " | grep -v grep |grep -v check';
+  var nodeProcesses = execSync(getNodeProcesses).toString().trim().split('\n');
+  var configPath = '';
+
+  var formatedProcesses = [];
+  for (var i in nodeProcesses) {
+    let p = nodeProcesses[i].split(' ');
+    let proc = {
+      pid: p[0],
+      txt: p[1],
+      script: p[2],
+      args: p.slice(3)
+    }
+    if (proc.script.endsWith('agenthub/client.js')) {
+      configPath = p[3];
+    }
+    formatedProcesses.push(proc);
+  }
+
+  var config = require(configPath);
+  if (!config.logdir.endsWith('/')) {
+    config.logdir += '/';
+  }
+
+  var lsal = execSync('ls -al ' + config.logdir).toString().trim().split('\n');
+  for (let i in lsal) {
+    console.log(lsal[i]);
+  }
+};
 
 var getProcessEnv = function(pid) {
   var environ = execSync('cat /proc/' + pid + '/environ').toString().trim().split('\u0000');
@@ -285,6 +315,7 @@ var printUsage = function () {
   '  -v --version           show agenthub version',
   '  -h --help              show this usage',
   '  --check                check if running node process is monitored by NPP',
+  '  --list-logdir          list files in config.logdir',
   '  --list                 show running agenthub(s)',
   '  --start config.json    start agenthub with config.json',
   '  --stop all             stop all running agenthub(s)',
@@ -322,6 +353,10 @@ exports.argvHandler = function(argv) {
     case '--check':
       checkRuningStatus();
       process.exit(0);
+      break;
+    case '--list-logdir':
+      listLogDir();
+      process.exit();
       break;
     case '-l':
     case '--list':
