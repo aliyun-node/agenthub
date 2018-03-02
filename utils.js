@@ -284,6 +284,7 @@ var printUsage = function () {
   '',
   '  -v --version           show agenthub version',
   '  -h --help              show this usage',
+  '  --check                check if running node process is monitored by NPP',
   '  --list                 show running agenthub(s)',
   '  --start config.json    start agenthub with config.json',
   '  --stop all             stop all running agenthub(s)',
