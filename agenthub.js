@@ -10,7 +10,7 @@ class AgentHub extends Agentx {
       heartbeatInterval: 60,
       reconnectDelay: 10,
       reportInterval: 60,
-      logdir: "/tmp/",
+      logdir: '/tmp/',
       cmddir: commandxPath,
       error_log: [],
       packages: [],
