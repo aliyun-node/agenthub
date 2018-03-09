@@ -4,7 +4,7 @@ agenthub
 agenthub 是由 Node.js 性能平台提供的 agent 命令程序，用于协助您的 Node 应用性能数据上报和问题诊断。
 
 - [![Build Status](https://travis-ci.org/aliyun-node/agenthub.svg?branch=master)](https://travis-ci.org/aliyun-node/agenthub)
-- [![Dependencies Status](https://david-dm.org/aliyun-node/@alicloud/agenthub.png)](https://david-dm.org/aliyun-node/@alicloud/agenthub)
+- [![dependencies Status](https://david-dm.org/aliyun-node/agenthub/status.svg)](https://david-dm.org/aliyun-node/agenthub)
 
 ## 安装
 
