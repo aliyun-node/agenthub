@@ -1,6 +1,6 @@
 {
   "name": "@alicloud/agenthub",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "整合 agentx 和 commandx 便利工具",
   "main": "lib/agenthub.js",
   "bin": {
@@ -29,8 +29,7 @@
   "homepage": "https://github.com/aliyun-node/agenthub#readme",
   "files": [
     "bin",
-    "agenthub.js",
-    "client.js"
+    "lib"
   ],
   "dependencies": {
     "agentx": "^1.8.4",
