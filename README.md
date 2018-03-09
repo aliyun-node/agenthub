@@ -36,6 +36,33 @@ $ nohup agenthub config.json &
 
 agenthub 将以常驻进程的方式执行。部署完成后，请访问 <https://node.console.aliyun.com/> 查看您的应用详情。如果一切正常，稍等片刻（1分钟）即可收到你的应用性能数据。
 
+### 启动 agenthub
+
+在 agenthub 2.0 中，我们可以不依赖 nohup 命令即可实现启动，启动命令如下：
+
+```sh
+$ agenthub start config.json
+agenthub has started(pid: 60039).
+// 如需查看日志
+$ cat ~/.agenthub.log
+```
+
+### 查看运行的 agenthub
+
+```sh
+$ agenthub list
+|- App ID -|- PID -|---- Start Time -----|--- Config Path ------------------------------------|
+|      886 | 60039 | 2018-03-09 15:15:19 | /path/to/config.json |
+|----------|-------|---------------------|----------------------------------------------------|
+```
+
+### 关闭 agenthub
+
+```sh
+$ agenthub stop all
+$ agenthub stop <appid>
+```
+
 ### 详细配置
 
 详细配置如下所示：
