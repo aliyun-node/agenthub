@@ -132,7 +132,13 @@ function start(configPath) {
   }
 
   var appid = cfg.appid;
-  var proc = spawn(agenthubBin, [configPath], {detached: true});
+  const logPath = path.join(os.homedir(), '.agenthub.log');
+  const out = fs.openSync(logPath, 'a');
+  const err = fs.openSync(logPath, 'a');
+  const proc = spawn(agenthubBin, [configPath], {
+    detached: true,
+    stdio: ['ipc', out, err]
+  });
   console.log('agenthub has started(pid: %s).', proc.pid);
   appendAgenthubStatus(appid, proc.pid, configPath);
   process.exit(0);
