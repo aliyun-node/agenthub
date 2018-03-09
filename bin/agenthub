@@ -12,7 +12,12 @@ const utils = require('../lib/utils');
 const SPLITTER = '\u0000';
 
 const agenthubBin = path.join(__dirname, 'agenthub_main');
-const agenthubStatusPath = path.join(os.homedir(), '.agenthub.pid');
+const agenthubStatusPath = path.join(os.homedir(), '.agenthub');
+
+// make sure the ~/.agenthub file exists
+if (!fs.existsSync(agenthubStatusPath)) {
+  fs.closeSync(fs.openSync(agenthubStatusPath, 'w'));
+}
 
 const listHeader =
 '|- App ID -|- PID -|---- Start Time -----|--- Config Path ------------------------------------|';

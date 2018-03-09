@@ -74,9 +74,11 @@ describe('main', function() {
 
   it('agenthub start', function() {
     const cfgPath = path.join(__dirname, 'figures/config.json');
-    const result = run(agenthub, 'start', cfgPath);
+    let result = run(agenthub, 'start', cfgPath);
     assert.equal(result.status, 0);
     assert(result.stdout.startsWith('agenthub has started'));
+    result = run(agenthub, 'list');
+    assert.equal(result.status, 0);
   });
 
   it('agenthub list', function() {
