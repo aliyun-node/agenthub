@@ -1,47 +1,276 @@
 #!/usr/bin/env node
 'use strict';
 
-var path = require('path');
-var nounou = require('nounou');
-var util = require('util');
-var clientPath = path.join(__dirname, '../client.js');
+const os = require('os');
+const fs = require('fs');
+const path = require('path');
+const child_process = require('child_process');
+const spawn = child_process.spawn;
 
-var argv = process.argv.slice(2);
+const utils = require('../lib/utils');
 
-var printUsage = function () {
-  console.log('参数错误。用法示例:');
-  console.log('  agenthub <config.json>');
-  console.log('  agenthub -v');
-};
+const SPLITTER = '\u0000';
 
-if (argv.length < 1) {
-  printUsage();
-  process.exit(1);
+const agenthubBin = path.join(__dirname, 'agenthub_main');
+const agenthubStatusPath = path.join(os.homedir(), '.agenthub');
+
+// make sure the ~/.agenthub file exists
+if (!fs.existsSync(agenthubStatusPath)) {
+  fs.closeSync(fs.openSync(agenthubStatusPath, 'w'));
 }
 
-if (argv[0] === '-v') {
-  console.log(require('../package.json').version);
+const listHeader =
+'|- App ID -|- PID -|---- Start Time -----|--- Config Path ------------------------------------|';
+
+const listFooter =
+'|----------|-------|---------------------|----------------------------------------------------|';
+
+function pad(n) {
+  if (n < 10) {
+    return '0' + n;
+  }
+
+  return '' + n;
+}
+
+function timestamp(time) {
+  var date = new Date();
+  date.setTime(+time);
+  const YYYY = date.getFullYear();
+  const MM = pad(date.getMonth() + 1);
+  const DD = pad(date.getDate());
+  const HH = pad(date.getHours());
+  const mm = pad(date.getMinutes());
+  const ss = pad(date.getSeconds());
+  return `${YYYY}-${MM}-${DD} ${HH}:${mm}:${ss}`;
+}
+
+function format(data, width) {
+  data = data.toString();
+  if (data.length >= width) {
+    return data;
+  }
+  // 靠右对齐
+  return ' '.repeat(width - data.length) + data;
+}
+
+function contentShaping(appid, pid, config, startTime) {
+  appid = format(appid, 8);
+  pid = format(pid, 5);
+  config = format(config, 40);
+  startTime = timestamp(startTime);
+  return '| ' + [appid, pid, startTime, config].join(' | ') + ' |';
+}
+
+function appendAgenthubStatus(appid, pid, config) {
+  const line = [appid, pid, config, Date.now()].join(SPLITTER) + '\n';
+  fs.appendFileSync(agenthubStatusPath, line);
+}
+
+function killRunning(pid) {
+  try {
+    process.kill(pid);
+  } catch (ex) {
+    return false;
+  }
+}
+
+function isAppid(appid) {
+  if (!appid) {
+    return false;
+  }
+
+  appid = appid.toString();
+  if (appid.length === 0) {
+    return false;
+  }
+
+  return /\d*/.test(appid);
+}
+
+function isAlive(pid) {
+  try {
+    return process.kill(pid, 0);
+  } catch (ex) {
+    return false;
+  }
+}
+
+function start(configPath) {
+  if (!configPath) {
+    console.log('config.json not provided.');
+    console.log();
+    console.log('Usage: ');
+    console.log('    agenthub start /path/to/config.json');
+    process.exit(1);
+  }
+
+  configPath = path.resolve(configPath);
+  if (!fs.existsSync(configPath)) {
+    console.log('%s not exists.', configPath);
+    process.exit(1);
+  }
+
+  if (!configPath.endsWith('.json')) {
+    console.log('%s must be a JSON file.', configPath);
+    process.exit(1);
+  }
+
+  var cfg;
+  try {
+    cfg = require(configPath);
+  } catch (ex) {
+    console.log('%s must be a valid JSON file.', configPath);
+    console.log('Error stack:');
+    console.log(ex.stack);
+    process.exit(1);
+  }
+
+  if (!cfg.appid || ! cfg.secret) {
+    console.log('`appid` and `secret` must be provided.');
+    process.exit(1);
+  }
+
+  var appid = cfg.appid;
+  const logPath = path.join(os.homedir(), '.agenthub.log');
+  const out = fs.openSync(logPath, 'a');
+  const err = fs.openSync(logPath, 'a');
+  const proc = spawn(agenthubBin, [configPath], {
+    detached: true,
+    stdio: ['ipc', out, err]
+  });
+  console.log('agenthub has started(pid: %s).', proc.pid);
+  appendAgenthubStatus(appid, proc.pid, configPath);
   process.exit(0);
 }
 
-nounou(clientPath, {
-  args: [argv[0]],
-  count: 1
-})
-  .on('fork', function (client) {
-    console.log('[%s] [client:%d] new client start', Date(), client.pid);
-  })
-  .on('disconnect', function (client) {
-    console.error('[%s] [%s] client:%s disconnect, suicide: %s.',
-      Date(), process.pid, client.pid, client.suicide);
-  })
-  .on('expectedExit', function (client, code, signal) {
-    console.log('[%s] [%s], client %s died (code: %s, signal: %s)', Date(),
-      process.pid, client.pid, code, signal);
-  })
-  .on('unexpectedExit', function (client, code, signal) {
-    var err = new Error(util.format('client %s died (code: %s, signal: %s)',
-      client.pid, code, signal));
-    err.name = 'ClientDiedError';
-    console.error('[%s] [%s] client exit: %s', Date(), process.pid, err.stack);
+function getAlives() {
+  var raw = fs.readFileSync(agenthubStatusPath, 'utf8').trim().split('\n');
+  var agenthubs = raw.filter(function(line) {
+    return line.length > 0;
+  }).map(function(line) {
+    const [appid, pid, config, startTime] = line.split(SPLITTER);
+    return {appid, pid, config, startTime};
   });
+
+  var alives = agenthubs.filter(function(item) {
+    return isAlive(item.pid);
+  });
+
+  return alives;
+}
+
+function writeBackAlives(alives) {
+  fs.writeFileSync(agenthubStatusPath, alives.map((item) => {
+    return [item.appid, item.pid, item.config, item.startTime]
+      .join(SPLITTER) + '\n';
+  }).join(''));
+}
+
+function list() {
+  /*
+   * get from ~/.agenthub.pid
+   * return [{appid: 123, pid: 3868, config: '/path/to/config.json'}, ... ]
+   */
+  if (!fs.existsSync(agenthubStatusPath)) {
+    console.log('There is no running agenthub.');
+    process.exit(0);
+  }
+
+  const alives = getAlives();
+
+  writeBackAlives(alives);
+
+  if (alives.length === 0) {
+    console.log('There is no running agenthub.');
+    process.exit(0);
+  }
+
+  console.log(listHeader);
+  alives.forEach(function(item) {
+    console.log(contentShaping(item.appid, item.pid, item.config, item.startTime));
+  });
+  console.log(listFooter);
+  process.exit(0);
+}
+
+function stopAll() {
+  const alives = getAlives();
+  alives.forEach(function(item) {
+    killRunning(item.pid);
+  });
+
+  writeBackAlives([]);
+}
+
+function stopApp(appid) {
+  const alives = getAlives();
+  if (!alives.find(function (item) {
+    return item.appid === appid;
+  })) {
+    console.log(`There is no running agenthub for appid: ${appid}.`);
+    return;
+  }
+
+  const newlist = alives.filter(function(item) {
+    if (item.appid === appid) {
+      killRunning(item.pid);
+      return false;
+    }
+    return true;
+  });
+
+  writeBackAlives(newlist);
+}
+
+function stop(input) {
+  if (input === 'all') {
+    stopAll();
+    process.exit(0);
+  } else if (isAppid(input)) {
+    stopApp(input);
+    process.exit(0);
+  } else {
+    console.log('agenthub stop all      stop all agenthubs');
+    console.log('agenthub stop <appid>  stop the agenthub(s) for appid');
+    process.exit(1);
+  }
+}
+
+const argv = process.argv.slice(2);
+
+if (argv.length < 1) {
+  console.log(utils.helpText);
+  process.exit(1);
+}
+
+switch (argv[0]) {
+case '-v':
+case '--version':
+case 'version':
+  console.log(require('../package.json').version);
+  process.exit(0);
+  break;
+case '-h':
+case '--help':
+case 'help':
+  console.log(utils.helpText);
+  process.exit(0);
+  break;
+case 'start':
+  start(argv[1]);
+  break;
+case 'list':
+  list();
+  break;
+case 'stop':
+  stop(argv[1]);
+  break;
+default:
+  // 兼容旧的形式
+  if (argv[0].endsWith('.json')) {
+    start(argv[0]);
+  }
+  console.log(utils.helpText);
+  process.exit(1);
+}

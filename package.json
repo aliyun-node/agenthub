@@ -7,8 +7,10 @@
     "agenthub": "bin/agenthub"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint . --fix"
+    "lint": "eslint bin/* lib test --fix",
+    "test": "mocha -R spec -t 80000 test/*.js --exit",
+    "cov": "nyc -r json -r lcov -r text-summary npm test",
+    "ci": "npm run lint && npm run cov"
   },
   "repository": {
     "type": "git",
@@ -36,6 +38,8 @@
     "nounou": "^1.2.1"
   },
   "devDependencies": {
-    "eslint": "^4.18.2"
+    "eslint": "^4.18.2",
+    "mocha": "^5.0.3",
+    "nyc": "^11.4.1"
   }
 }
